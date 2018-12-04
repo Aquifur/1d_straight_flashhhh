@@ -1,0 +1,116 @@
+module alu (
+    input alufn[6],
+    input a[16],  
+    input b[16],  
+    output alu[16],
+    output z,
+    output v,
+    output n,
+    output error[8]
+  ) {
+  
+//ALU modules
+  adder adder_fn;
+  compare compare_fn;
+  bool boolean_fn;
+  shifter shifter_fn;
+  always {
+    
+    //assigning inputs to adder module
+    adder_fn.a = a;
+    adder_fn.b = b; 
+    adder_fn.alufn = alufn; 
+    
+    //assigning inputs to compare module
+    compare_fn.alufn = alufn;
+    compare_fn.v = adder_fn.v;
+    compare_fn.n = adder_fn.n;
+    compare_fn.z = adder_fn.z;
+    
+    //assigning inputs to boolean module
+    boolean_fn.a =a;
+    boolean_fn.b=b;
+    boolean_fn.alufn=alufn;
+    
+    //assigning inputs to shifter module
+    shifter_fn.a=a;
+    shifter_fn.b=b;
+    shifter_fn.alufn=alufn;
+    
+    // alufn inputs that select the module to be used for the alu
+    case(alufn[5:4]){
+      b00:
+      alu = adder_fn.sumout; // selects adder output 
+      b01:
+      alu = boolean_fn.boole; // selects boolean output 
+      b10:
+      alu = shifter_fn.a_new; //selects shifter output
+      b11:
+      alu = compare_fn.cmp1; //selects compare output
+      default:
+      alu = 16b0;
+  }
+    v = adder_fn.v;
+    n = adder_fn.n;
+    z = adder_fn.z;
+    error=0;
+    case(alufn[5:4]){
+        
+      2b00: 
+        case(alufn[3]){
+          1b1:
+            error=8hff;
+            alu = 16b0;
+          1b0:
+            error=0;
+          default:
+            error=0;  
+        }
+          
+      2b01:
+        case(alufn[3:0]){
+        
+          4b1011:
+            error=8hff;
+            alu = 16b0;
+          4b0100:
+            error=8hff;
+            alu = 16b0;
+          4b0111:
+            error=8hff;
+            alu = 16b0;  
+          default: 
+            error=0;
+        }
+      2b10:
+        case(alufn[3:0]){
+        
+          4b0000:
+            error=0;
+          4b0001:
+            error=0;
+          4b0011:
+            error=0;  
+          default: 
+            error=8hff;
+            alu = 16b0;
+        }
+      2b11:
+        case(alufn[3:0]){
+        
+          4b0011:
+            error=0;
+          4b0100:
+            error=0;
+          4b0111:
+            error=0;  
+          default: 
+            error=8hff;
+            alu = 16b0;
+        }
+      default: 
+        error=0;
+      
+    }
+}
+}

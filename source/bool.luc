@@ -1,0 +1,31 @@
+module bool(
+  input a[16],
+  input b[16],
+  input alufn[6],
+  output boole[16]
+)
+
+{
+
+ always{
+  case(alufn[3:0]) {
+    4b0000: boole = 16b0;   //binary constant 0
+    4b0010: boole = 16hFFFF;   //Binary constant 1
+    4b1000: boole = a&b;    //AND
+    4b1110: boole = a|b;    //OR
+    4b0110: boole = a^b;    //XOR
+    4b1010: boole = a;      //A
+    4b1100: boole = b;      //B
+    4b1001: boole = ~(a^b);   //XNOR
+    4b1101: boole = ~(a&b);   //NAND
+    4b1111: boole = ~(a|b);   //NOR
+    4b0011: boole = ~(a^b);   //a==b
+    4b0001: boole=!a;       //not a
+    4b0101: boole=!b;      //not b
+        
+    default:
+      boole = 0;
+
+    }
+  }
+}

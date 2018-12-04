@@ -1,0 +1,51 @@
+module adder (
+    input alufn[6],
+    input a[16],  
+    input b[16],  
+    output sumout[16],
+    output z,
+    output v,
+    output n
+  ) {
+sig sum[16]; //16-bit output
+sig cmp[16];
+  
+  always {
+    
+    case(alufn[2:0]){ //alufn indexes to decide on add or subtract operator
+    3b000:
+      sum = a+b; //addition
+    3b001:
+      sum = a-b; //subtraction
+    3b010:
+      sum = a*b; //multiplication
+    3b011:
+      sum = a/b;//division
+    3b100://modulo
+      if(a>=b)
+        sum=a-(a/b)*b;
+      else
+        sum=a;
+    3b101://average
+      sum=(a+b)/2;
+    3b110://no. of zeroes
+      sum=!a[0]+!a[1]+!a[2]+!a[3]+!a[4]+!a[5]+!a[6]+!a[7]+!a[8]+!a[9]+!a[10]+!a[11]+!a[12]+!a[13]+!a[14]+!a[15]+!b[0]+!b[1]+!b[2]+!b[3]+!b[4]+!b[5]+!b[6]+!b[7]+!b[8]+!b[9]+!b[10]+!b[11]+!b[12]+!b[13]+!b[14]+!b[15];
+    3b111://no. of 1s
+      sum=a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]+a[7]+a[8]+a[9]+a[10]+a[11]+a[12]+a[13]+a[14]+a[15]+b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]+b[7]+b[8]+b[9]+b[10]+b[11]+b[12]+b[13]+b[14]+b[15];
+    default:
+      sum = 0;
+  }
+   case(alufn[0]){
+    1b0:
+      cmp = a+b; //addition
+    1b1:
+      cmp = a-b; //subtraction
+    default:
+      cmp = 0;
+    }
+    sumout = sum[15:0]; //final sum
+    v = (a[15] & (~b[15]) & (~cmp[15])) | ((~a[15])&(b[15])&cmp[15]);
+    n = cmp[15];
+    z = !(cmp);
+}
+}

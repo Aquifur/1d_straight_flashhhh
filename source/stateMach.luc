@@ -1,0 +1,175 @@
+module stateMach (
+    input clk,  // clock
+    input rst,  // reset
+    
+    //player 1 btns
+    input btn1,
+    input btn2,
+    input btn3,
+    input btn4,
+    input btn5,  // reset btn
+    
+    //player 2 btns
+    input btn6,
+    input btn7,
+    input btn8,
+    input btn9,
+    input btn10,  // reset btn
+    
+    output instr[16],  // to ctl/alu
+    input zap,
+    input alu_output[16],
+    
+    output play_row_1[10],  // for current row, row 0 (p1)
+    output play_row_2[10],  // for current row, row 0 (p2)
+    //input curr_boardstate[6],  // current board state; bit 0 is play row of p1, bit 5 is play row of p2
+    //output new_boardstate[6]   // return new board state
+    output score_rows_1[3],
+    output score_rows_2[3]
+  ) {
+  
+  sig player[2];
+  
+  .clk(clk){
+  
+    dff stage1[2];  // stage for player 1
+    dff stage2[2];  // stage for player 2
+        
+    .rst(rst){
+      fsm state(#INIT(START)) = {START, MAP, PRESS_ME, FUNCTION, ZAPPED, END};
+    }
+    
+    simple_ram ram (#SIZE(64), #DEPTH(4));
+  }
+
+  always {
+    ram.address = b00;        
+    ram.write_data = 8h0;    
+    ram.write_en = 0;         
+    
+    instr = 16b0;
+    player = 2b00;
+    
+    play_row_1 = 10b0;
+    play_row_2 = 10b0;
+    score_rows_1 = 3b0;
+    score_rows_2 = 3b0;
+    
+    case(state.q){
+      state.START:
+        // do the initial mapping of buttons and reset stuff
+        
+        //reset stuff
+        stage1.d = b00;
+        stage2.d = b00;
+        play_row_1 = 10b0;
+        play_row_2 = 10b0;
+        
+        //map reset code to reset button (b5 and b10)
+        
+        //store the 16 bit code for buttons for each stages, total bits = 3*4*16 = 192
+        ram.address = 2b00;
+        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
+        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
+        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
+        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even     
+        
+        ram.address = 2b01;
+        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
+        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
+        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
+        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even
+        
+        ram.address = 2b10;
+        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
+        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
+        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
+        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even
+        
+        //do we need to map code for reset and zap checking to RAM?
+        
+        ram.write_en = 1;                // signal we want to write
+        ram.address = 2b00;
+        state.d = state.MAP;
+      
+        
+      state.MAP:
+        //choose the stage (based on bit), assign buttons to 16 bit code (4 codes to 8 buttons)
+        //stage chooses addr in RAM
+        if (player == 2b01) { ram.address = stage1.q;}
+        else {if (player == 2b10) { ram.address = stage2.q;}}
+        
+        //b1 = code, b2 = code, ..... --> just pull from RAM
+        
+        state.d = state.PRESS_ME;
+        
+      
+      state.PRESS_ME:
+        //button pressed, go to function
+        
+        //if (b1,b2, b3, .... is high) { go next FUNCTION}
+        if (btn1 | btn2 | btn3 | btn4 | btn5 | btn6 | btn7 | btn8 | btn9 | btn10) { state.d = state.FUNCTION;}
+          
+      
+      state.FUNCTION:
+        //take code from RAM, add player
+        if (btn1 | btn2 | btn3 | btn4 | btn5) { player = 2b01;}
+        else { player = 2b10;}
+        if (btn1 == 1 | btn6 == 1) { instr = ram.read_data[15:12] + player + ram.read_data[9:0];}
+        if (btn2 == 1 | btn7 == 1) { instr = ram.read_data[31:28] + player + ram.read_data[25:16];}
+        if (btn3 == 1 | btn8 == 1) { instr = ram.read_data[47:44] + player + ram.read_data[41:32];}
+        if (btn4 == 1 | btn9 == 1) { instr = ram.read_data[63:60] + player + ram.read_data[57:48];}
+        if (btn5 == 1 | btn10 == 1) { instr = 4b0000 + player + 10b0000000000;}  //reset code
+        
+        //pass instr to ctl/alu --> top file
+        //rx code, do the LED lighting, check zap n move on
+        
+        //play row lighting --> top file (boardstate_1, boardstate_2)
+        //nvm, it is here
+        
+        if (player == 2b01) { play_row_1 = alu_output[9:0];}
+        else { if (player == 2b10) { play_row_2 = alu_output[9:0];}}
+        
+        if (zap == 0) { state.d = state.PRESS_ME;}
+        if (zap == 1) { state.d = state.ZAPPED;}
+      
+        
+      state.ZAPPED:
+        //line++, do lighting of lines (the next row of lights)
+        
+        // grab current light state of player in question
+        
+        //if (line 1 is 0) { light line 1}
+        //elif (line 2 is 0) { light line 2}
+        //else (ie line 1 and 2 is 1) { light line 0}
+        
+        if (player == 2b01) {  //player 1
+          if (stage1.q == 0) { score_rows_1 = 3b001;}
+          else { if (stage1.q == 1) { score_rows_1 = 3b011;}
+            else { score_rows_1 = 3b111;} }
+        
+        stage1.d = stage1.q + 1;
+        //check line/stage == 3, if true go to END, else go MAP 
+        if (stage1.q >= 3) { state.d = state.END;}
+        else { state.d = state.MAP;}
+
+        
+        } else {  //player 2
+          if (stage2.q == 0) { score_rows_2 = 3b001;}
+          else { if (stage2.q == 1) { score_rows_2 = 3b011;}
+            else { score_rows_2 = 3b111;} }
+        
+        stage2.d = stage2.q + 1;
+        //check line/stage == 3, if true go to END, else go MAP 
+        if (stage2.q >= 3) { state.d = state.END;}
+        else { state.d = state.MAP;} }
+        
+        
+      state.END:
+        //do winning shit, eg flash flash + buzz buzz
+        
+        state.d = state.START;  // so can restart without off-ing
+      
+    }
+  }
+}

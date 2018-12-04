@@ -1,0 +1,25 @@
+module compare ( //performs CMPEQ, CMPLT, CMPLE functions
+    input alufn[6], //input from ALU
+    input z, // input z from adder
+    input v, // input v from adder
+    input n, // input n from adder
+    output cmp1[16] //output to ALU
+  ) {
+sig cmp; 
+  always {
+  
+    case(alufn[2:1]){ //values of alufn that define comparator function
+    2b01:
+      cmp = z; //CMPEQ
+    2b10:
+      cmp = n^v; //CMPLT
+    2b11:
+      cmp = z | (n^v); //CMPLE
+    default:
+      cmp = b0;
+  }
+    cmp1[0]=cmp; // least significant bit of cmp 
+    cmp1[15:1] = 15b0; // other 7 bits are  0
+
+}
+}
