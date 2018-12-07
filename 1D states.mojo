@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="1D states" board="Mojo V3" language="Lucid">
+<project name="777" board="Mojo V3" language="Lucid">
   <files>
     <src>bool.luc</src>
     <src>alu.luc</src>
@@ -12,5 +12,8 @@
     <ucf lib="true">mojo.ucf</ucf>
     <component>simple_ram.v</component>
     <component>reset_conditioner.luc</component>
+    <component>pipeline.luc</component>
+    <component>button_conditioner.luc</component>
+    <component>edge_detector.luc</component>
   </files>
 </project>

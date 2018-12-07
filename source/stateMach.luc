@@ -16,9 +16,12 @@ module stateMach (
     input btn9,
     input btn10,  // reset btn
     
+    
+    //output led[8],
     output instr[16],  // to ctl/alu
     input zap,
-    input alu_output[16],
+    output playerr[2],
+    //input alu_output[16],
     
     output play_row_1[10],  // for current row, row 0 (p1)
     output play_row_2[10],  // for current row, row 0 (p2)
@@ -29,97 +32,180 @@ module stateMach (
   ) {
   
   sig player[2];
+  sig bo1;
+  sig bo2;
+  sig bo3;
+  sig bo4;
+  sig bo5;
+  sig bo6;
+  sig bo7;
+  sig bo8;
+  sig bo9;
+  sig bo10;
+  
   
   .clk(clk){
-  
+    
+
     dff stage1[2];  // stage for player 1
     dff stage2[2];  // stage for player 2
+    dff led_counter[3];
+    dff led_counter2[3];
+    dff play[2];
+    dff clear[1];
+    dff cuicui[1];
+    //dff xx[1];
+    edge_detector edge_detector1(#RISE(0), #FALL(1));
+    edge_detector edge_detector2(#RISE(0), #FALL(1));
+    edge_detector edge_detector3(#RISE(0), #FALL(1));
+    edge_detector edge_detector4(#RISE(0), #FALL(1));
+    edge_detector edge_detector5(#RISE(0), #FALL(1));
+    edge_detector edge_detector6(#RISE(0), #FALL(1));
+    edge_detector edge_detector7(#RISE(0), #FALL(1));
+    edge_detector edge_detector8(#RISE(0), #FALL(1));
+    edge_detector edge_detector9(#RISE(0), #FALL(1));
+    edge_detector edge_detector10(#RISE(0), #FALL(1));
+    
+    button_conditioner button_conditioner1;
+    button_conditioner button_conditioner2;
+    button_conditioner button_conditioner3;
+    button_conditioner button_conditioner4;
+    button_conditioner button_conditioner5;
+    button_conditioner button_conditioner6;
+    button_conditioner button_conditioner7;
+    button_conditioner button_conditioner8;
+    button_conditioner button_conditioner9;
+    button_conditioner button_conditioner10;
         
     .rst(rst){
-      fsm state(#INIT(START)) = {START, MAP, PRESS_ME, FUNCTION, ZAPPED, END};
+      fsm state(#INIT(START)) = {START, MAP, PRESS_ME, ZAPPED, END};
     }
     
-    simple_ram ram (#SIZE(64), #DEPTH(4));
   }
 
-  always {
-    ram.address = b00;        
-    ram.write_data = 8h0;    
-    ram.write_en = 0;         
-    
+  always {       
+  //  led=8h00;
     instr = 16b0;
     player = 2b00;
-    
+    playerr=stage1.q[1:0];//output
     play_row_1 = 10b0;
     play_row_2 = 10b0;
-    score_rows_1 = 3b0;
-    score_rows_2 = 3b0;
+    score_rows_1 = led_counter.q[2:0];
+    score_rows_2 = led_counter2.q[2:0];
+    led_counter.d=led_counter.q;
+    led_counter2.d = led_counter2.q;
+    //score_rows_1[2]=xx.q;
+    button_conditioner1.in = btn1;
+    button_conditioner2.in = btn2;
+    button_conditioner3.in = btn3;
+    button_conditioner4.in = btn4;
+    button_conditioner5.in = btn5;
+    button_conditioner6.in = btn6;
+    button_conditioner7.in = btn7;
+    button_conditioner8.in = btn8;
+    button_conditioner9.in = btn9;
+    button_conditioner10.in = btn10;
+       
+    edge_detector1.in = button_conditioner1.out;
+    edge_detector2.in = button_conditioner2.out;
+    edge_detector3.in = button_conditioner3.out;
+    edge_detector4.in = button_conditioner4.out;
+    edge_detector5.in = button_conditioner5.out;
+    edge_detector6.in = button_conditioner6.out;
+    edge_detector7.in = button_conditioner7.out;
+    edge_detector8.in = button_conditioner8.out;
+    edge_detector9.in = button_conditioner9.out;
+    edge_detector10.in = button_conditioner10.out;
+    
+    bo1 = edge_detector1.out;
+    bo2 = edge_detector2.out;
+    bo3 = edge_detector3.out;
+    bo4 = edge_detector4.out;
+    bo5 = edge_detector5.out;
+    bo6 = edge_detector6.out;
+    bo7 = edge_detector7.out;
+    bo8 = edge_detector8.out;
+    bo9 = edge_detector9.out;
+    bo10 = edge_detector10.out;
+    
     
     case(state.q){
       state.START:
+        //play_row_1[0] = b1;
         // do the initial mapping of buttons and reset stuff
-        
+        cuicui.d=1b1;
         //reset stuff
-        stage1.d = b00;
-        stage2.d = b00;
+        stage1.d[1:0] = 2b00;
+        stage2.d[1:0] = 2b00;
+        led_counter.d[2:0]=3b0;
+        led_counter2.d[2:0] = 3b0;
         play_row_1 = 10b0;
         play_row_2 = 10b0;
-        
-        //map reset code to reset button (b5 and b10)
-        
-        //store the 16 bit code for buttons for each stages, total bits = 3*4*16 = 192
-        ram.address = 2b00;
-        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
-        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
-        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
-        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even     
-        
-        ram.address = 2b01;
-        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
-        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
-        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
-        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even
-        
-        ram.address = 2b10;
-        ram.write_data[15:0] = 16b0001000101010101;         // B1, B6 = Odd
-        ram.write_data[31:16] = 16b0010000000000001;        // B2, B7 = SHL+1
-        ram.write_data[47:32] = 16b0011000000000001;        // B3, B8 = SHR+1
-        ram.write_data[63:48] = 16b0001001010101010;        // B4, B9 = Even
-        
-        //do we need to map code for reset and zap checking to RAM?
-        
-        ram.write_en = 1;                // signal we want to write
-        ram.address = 2b00;
+        instr = c{4b0001, player, 10b0101010101};
+                       // signal we want to write
+        if(cuicui.q){
         state.d = state.MAP;
-      
+          cuicui.d=0;
+        }
         
-      state.MAP:
+        
+      /*state.MAP:
+        //play_row_1[1] = b1;
         //choose the stage (based on bit), assign buttons to 16 bit code (4 codes to 8 buttons)
         //stage chooses addr in RAM
-        if (player == 2b01) { ram.address = stage1.q;}
-        else {if (player == 2b10) { ram.address = stage2.q;}}
+        if (player == 2b01) { ram.address = 2b0;}
+        else {if (player == 2b10) { ram.address = stage2.q[1:0];}}
+       
         
         //b1 = code, b2 = code, ..... --> just pull from RAM
         
         state.d = state.PRESS_ME;
-        
+        */
       
-      state.PRESS_ME:
+      state.MAP:
         //button pressed, go to function
-        
         //if (b1,b2, b3, .... is high) { go next FUNCTION}
-        if (btn1 | btn2 | btn3 | btn4 | btn5 | btn6 | btn7 | btn8 | btn9 | btn10) { state.d = state.FUNCTION;}
-          
-      
-      state.FUNCTION:
+      //  if (bo1 | bo2 | bo3 | bo4 | bo5 | bo6 | bo7 | bo8 | bo9 | bo10) { state.d = state.FUNCTION; }
+     //   led=8h00;
+     // state.FUNCTION:
+       // play_row_1[3] = b1;
         //take code from RAM, add player
-        if (btn1 | btn2 | btn3 | btn4 | btn5) { player = 2b01;}
-        else { player = 2b10;}
-        if (btn1 == 1 | btn6 == 1) { instr = ram.read_data[15:12] + player + ram.read_data[9:0];}
-        if (btn2 == 1 | btn7 == 1) { instr = ram.read_data[31:28] + player + ram.read_data[25:16];}
-        if (btn3 == 1 | btn8 == 1) { instr = ram.read_data[47:44] + player + ram.read_data[41:32];}
-        if (btn4 == 1 | btn9 == 1) { instr = ram.read_data[63:60] + player + ram.read_data[57:48];}
-        if (btn5 == 1 | btn10 == 1) { instr = 4b0000 + player + 10b0000000000;}  //reset code
+        if (bo1 | bo2 | bo3 | bo4 | bo5) { 
+          player = 2b01;
+          play.d[1:0]=player;
+        }
+        else if(bo6 | bo7 | bo8 | bo9 | bo10){ player = 2b10;
+          play.d[1:0]=player;
+          }
+        
+        
+        if (bo1 == 1 | bo6 == 1) { 
+          if(stage1.q[1:0]==2b00){instr = c{4b0001, player, 10b0101010101};     }
+          else if(stage1.q[1:0]==2b01){instr =c{4b0001, player, 10b0100100100};     } //mul of 3
+          else if (stage1.q[1:0]==2b10){instr = c{4b0010, player, 10b0000000001};     }
+        }
+          
+          
+        else if (bo2 == 1 | bo7 == 1){ 
+          if(stage1.q[1:0]==2b00){ instr = c{4b0010, player, 10b0000000001};     }
+          else if(stage1.q[1:0]==2b01){instr = c{4b0010, player, 10b0000000100};     } //SHL 4
+          else if (stage1.q[1:0]==2b10){instr = c{4b0001, player, 10b0101010101};     }
+        }
+          
+          
+        else if (bo3 == 1 | bo8 == 1) { 
+          if(stage1.q[1:0]==2b00){ instr = c{4b0011, player, 10b0000000001};  }
+          else if(stage1.q[1:0]==2b01){instr = c{4b0011, player, 10b0000000010};     } // SHR 2
+          else if (stage1.q[1:0]==2b10){ instr = c{4b0011, player, 10b0000000001}; }
+        }
+          
+        else if (bo4 == 1 | bo9 == 1) {  
+          if(stage1.q[1:0]==2b00){ instr =c{4b0001, player, 10b1010101010};   }
+          else if(stage1.q[1:0]==2b01){instr =c{4b0001, player, 10b0101010101};     } // ODD
+          else if (stage1.q[1:0]==2b10){ instr =c{4b0001, player, 10b1010101010}; }
+        }
+          
+        else if (bo5 == 1 | bo10 ==1) { instr = c{4b0000, player, 10b0000000000};}  //reset code
         
         //pass instr to ctl/alu --> top file
         //rx code, do the LED lighting, check zap n move on
@@ -127,14 +213,18 @@ module stateMach (
         //play row lighting --> top file (boardstate_1, boardstate_2)
         //nvm, it is here
         
-        if (player == 2b01) { play_row_1 = alu_output[9:0];}
-        else { if (player == 2b10) { play_row_2 = alu_output[9:0];}}
+        //if (player == 2b01) { play_row_1 = alu_output[9:0];}
+        //else { if (player == 2b10) { play_row_2 = alu_output[9:0];}}
         
-        if (zap == 0) { state.d = state.PRESS_ME;}
-        if (zap == 1) { state.d = state.ZAPPED;}
+       // if (zap == 0) { state.d = state.PRESS_ME;}
+        if (zap) { state.d = state.ZAPPED;
+        if(clear.q){instr = c{4b0000, 001, 10b0000000000};
+        clear.d=0;}
+            }
       
         
       state.ZAPPED:
+        //play_row_1[4] = b1;
         //line++, do lighting of lines (the next row of lights)
         
         // grab current light state of player in question
@@ -142,34 +232,62 @@ module stateMach (
         //if (line 1 is 0) { light line 1}
         //elif (line 2 is 0) { light line 2}
         //else (ie line 1 and 2 is 1) { light line 0}
+        //player=2b01;
+        clear.d=1;
+        player=play.q[1:0];
+        playerr=stage1.q;
         
         if (player == 2b01) {  //player 1
-          if (stage1.q == 0) { score_rows_1 = 3b001;}
-          else { if (stage1.q == 1) { score_rows_1 = 3b011;}
-            else { score_rows_1 = 3b111;} }
+          
+          if (stage1.q[1:0]== 2b00) { led_counter.d[2:0]= 3b001;
+          stage1.d = stage1.q + 1;}
+          else if (stage1.q[1:0] == 2b01) { led_counter.d[2:0]= 3b011;
+          stage1.d = stage1.q + 1;}
+          else if (stage1.q[1:0] == 2b10) { led_counter.d[2:0] = 3b111;
+          stage1.d = stage1.q + 1;
+  //          state.d=state.END;
+         }
+
+           state.d = state.MAP;
+            } 
         
-        stage1.d = stage1.q + 1;
-        //check line/stage == 3, if true go to END, else go MAP 
-        if (stage1.q >= 3) { state.d = state.END;}
-        else { state.d = state.MAP;}
+          else if (player == 2b10) {  //player 2
+          
+          if (stage2.q[1:0]== 2b00) { led_counter.d[2:0]= 3b001;
+          stage2.d = stage2.q + 1;}
+          else if (stage2.q[1:0] == 2b01) { led_counter.d[2:0]= 3b011;
+          stage2.d = stage2.q + 1;}
+          else if (stage2.q[1:0] == 2b10) { led_counter.d[2:0] = 3b111;
+          stage2.d = stage2.q + 1;
+  //          state.d=state.END;
+         }
+
+           state.d = state.MAP;
+            } 
 
         
-        } else {  //player 2
-          if (stage2.q == 0) { score_rows_2 = 3b001;}
-          else { if (stage2.q == 1) { score_rows_2 = 3b011;}
+        //check line/stage == 3, if true go to END, else go MAP 
+        
+     
+        /* else {  //player 2
+          if (stage2.q[1:0] == 2b00) { score_rows_2 = 3b001;}
+          else { if (stage2.q[1:0] == 2b01) { score_rows_2 = 3b011;}
             else { score_rows_2 = 3b111;} }
         
         stage2.d = stage2.q + 1;
         //check line/stage == 3, if true go to END, else go MAP 
-        if (stage2.q >= 3) { state.d = state.END;}
-        else { state.d = state.MAP;} }
-        
+        if (stage2.q[1:0] == 2b11) { state.d = state.END;}
+        else { state.d = state.MAP;} 
+                   // led_counter.d[2:0] =3b111;  
+          } */
         
       state.END:
+        //play_row_1[5] = b1;
         //do winning shit, eg flash flash + buzz buzz
         
         state.d = state.START;  // so can restart without off-ing
+
       
-    }
+    } 
   }
 }
