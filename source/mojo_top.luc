@@ -30,9 +30,9 @@ module mojo_top (
     output play_row_2[10],  // for current row, row 0 (p2)
     
     output score_rows_1[3],
-    output score_rows_2[3],
+    output score_rows_2[3]
     
-    output playerr[2]
+    //output playerr[2]
     
 
     
@@ -40,7 +40,8 @@ module mojo_top (
   
   sig rst;                  // reset signal
   sig player[2];
-  sig zap;
+  sig zap1;
+  sig zap2;
   
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
@@ -81,7 +82,8 @@ module mojo_top (
     //led = 8hFF;
 
         
-    zap = b0;
+    zap1 = b0;
+    zap2=0;
     alu.alufn = 6b0;
     play_row_1 = 10b0;
     play_row_2 = 10b0;
@@ -119,9 +121,11 @@ module mojo_top (
     else { if (player == 2b10) { 
       boardstate_2.d[9:0] = alu.alu[9:0];}}
     
-    zap = &boardstate_1.q[9:0] | &boardstate_2.q[9:0]; 
+    zap1 = &boardstate_1.q[9:0];
+    zap2= &boardstate_2.q[9:0]; 
        
-    statemachine.zap = zap;
+    statemachine.zap1 = zap1;
+    statemachine.zap2 = zap2;
         
     
     play_row_1 = ~boardstate_1.q[9:0];//reg
@@ -131,7 +135,7 @@ module mojo_top (
     score_rows_1 = ~statemachine.score_rows_1;
     score_rows_2 = ~statemachine.score_rows_2;
     
-    playerr=statemachine.playerr;
+  // playerr=statemachine.playerr;
   //  led = statemachine.led;             // turn LEDs off
     spi_miso = bz;          // not using SPI
     spi_channel = bzzzz;    // not using flags

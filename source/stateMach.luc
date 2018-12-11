@@ -19,12 +19,11 @@ module stateMach (
     
     //output led[8],
     output instr[16],  // to ctl/alu
-    input zap,
+    input zap1,
+    input zap2,
     output playerr[2],
     //input alu_output[16],
     
-    output play_row_1[10],  // for current row, row 0 (p1)
-    output play_row_2[10],  // for current row, row 0 (p2)
     //input curr_boardstate[6],  // current board state; bit 0 is play row of p1, bit 5 is play row of p2
     //output new_boardstate[6]   // return new board state
     output score_rows_1[3],
@@ -52,8 +51,6 @@ module stateMach (
     dff led_counter[3];
     dff led_counter2[3];
     dff play[2];
-    dff clear[1];
-    dff cuicui[1];
     //dff xx[1];
     edge_detector edge_detector1(#RISE(0), #FALL(1));
     edge_detector edge_detector2(#RISE(0), #FALL(1));
@@ -78,7 +75,7 @@ module stateMach (
     button_conditioner button_conditioner10;
         
     .rst(rst){
-      fsm state(#INIT(START)) = {START, MAP, PRESS_ME, ZAPPED, END};
+      fsm state(#INIT(START)) = {START, MAP, PRESS_ME, ZAPPED,ZAPPED2, END};
     }
     
   }
@@ -88,8 +85,6 @@ module stateMach (
     instr = 16b0;
     player = 2b00;
     playerr=stage1.q[1:0];//output
-    play_row_1 = 10b0;
-    play_row_2 = 10b0;
     score_rows_1 = led_counter.q[2:0];
     score_rows_2 = led_counter2.q[2:0];
     led_counter.d=led_counter.q;
@@ -133,20 +128,15 @@ module stateMach (
       state.START:
         //play_row_1[0] = b1;
         // do the initial mapping of buttons and reset stuff
-        cuicui.d=1b1;
         //reset stuff
         stage1.d[1:0] = 2b00;
         stage2.d[1:0] = 2b00;
         led_counter.d[2:0]=3b0;
         led_counter2.d[2:0] = 3b0;
-        play_row_1 = 10b0;
-        play_row_2 = 10b0;
-        instr = c{4b0001, player, 10b0101010101};
+              instr = c{4b0000, 2b01, 10b0000000000}; 
                        // signal we want to write
-        if(cuicui.q){
         state.d = state.MAP;
-          cuicui.d=0;
-        }
+
         
         
       /*state.MAP:
@@ -178,34 +168,74 @@ module stateMach (
           play.d[1:0]=player;
           }
         
+        if (play.q[1:0] == 2b01){
         
-        if (bo1 == 1 | bo6 == 1) { 
-          if(stage1.q[1:0]==2b00){instr = c{4b0001, player, 10b0101010101};     }
-          else if(stage1.q[1:0]==2b01){instr =c{4b0001, player, 10b0100100100};     } //mul of 3
-          else if (stage1.q[1:0]==2b10){instr = c{4b0010, player, 10b0000000001};     }
+          if (bo1 == 1 | bo6 == 1) { 
+          if(stage1.q[1:0]==2b00){instr = c{4b0001, player, 10b0101010101};     } // odd
+          else if(stage1.q[1:0]==2b01){instr =c{4b0011, player, 10b0000000001};     } // SHR1, -1
+          else if (stage1.q[1:0]==2b10){instr = c{4b0001, player, 10b0100100100};     } // mul of 3
         }
           
           
-        else if (bo2 == 1 | bo7 == 1){ 
-          if(stage1.q[1:0]==2b00){ instr = c{4b0010, player, 10b0000000001};     }
-          else if(stage1.q[1:0]==2b01){instr = c{4b0010, player, 10b0000000011};     } //SHL 3
-          else if (stage1.q[1:0]==2b10){instr = c{4b0001, player, 10b0101010101};     }
+          else if (bo2 == 1 | bo7 == 1){ 
+          if(stage1.q[1:0]==2b00){ instr = c{4b0010, player, 10b0000000001};     } // SHL1, +1
+          else if(stage1.q[1:0]==2b01){instr = c{4b0010, player, 10b0000000001};     } // SHL1, +1
+          else if (stage1.q[1:0]==2b10){instr = c{4b0011, player, 10b0000000010};     } // SHR2, -2
         }
           
           
-        else if (bo3 == 1 | bo8 == 1) { 
-          if(stage1.q[1:0]==2b00){ instr = c{4b0011, player, 10b0000000001};  }
-          else if(stage1.q[1:0]==2b01){instr = c{4b0011, player, 10b0000000010};     } // SHR 2
-          else if (stage1.q[1:0]==2b10){ instr = c{4b0011, player, 10b0000000001}; }
+          else if (bo3 == 1 | bo8 == 1) { 
+          if(stage1.q[1:0]==2b00){ instr = c{4b0011, player, 10b0000000001};  } // SHR1, -1
+          else if(stage1.q[1:0]==2b01){instr = c{4b0001, player, 10b1111100000};     } // lights 5-10
+          else if (stage1.q[1:0]==2b10){ instr = c{4b0010, player, 10b0000000001}; } // SHL1, +1
         }
           
-        else if (bo4 == 1 | bo9 == 1) {  
-          if(stage1.q[1:0]==2b00){ instr =c{4b0001, player, 10b1010101010};   }
-          else if(stage1.q[1:0]==2b01){instr =c{4b0001, player, 10b0101010101};     } // ODD
-          else if (stage1.q[1:0]==2b10){ instr =c{4b0001, player, 10b1010101010}; }
+          else if (bo4 == 1 | bo9 == 1) {  
+          if(stage1.q[1:0]==2b00){ instr =c{4b0001, player, 10b1010101010};   } // even
+          else if(stage1.q[1:0]==2b01){instr =c{4b0001, player, 10b1000010000};     } // mul of 5
+          else if (stage1.q[1:0]==2b10){ instr =c{4b0001, player, 10b0000000001}; } // just first light
         }
           
-        else if (bo5 == 1 | bo10 ==1) { instr = c{4b0000, player, 10b0000000000};}  //reset code
+          else if (bo5 == 1 | bo10 ==1) { instr = c{4b0000, player, 10b0000000000};}  //reset code
+        
+          
+          }
+        
+        else if (play.q[1:0] == 2b10){
+      
+          if (bo1 == 1 | bo6 == 1) { 
+          if(stage2.q[1:0]==2b00){instr = c{4b0001, player, 10b0101010101};     } // odd
+          else if(stage2.q[1:0]==2b01){instr =c{4b0011, player, 10b0000000001};     } // SHR1, -1
+          else if (stage2.q[1:0]==2b10){instr = c{4b0001, player, 10b0100100100};     } // mul of 3
+        }
+          
+          
+          else if (bo2 == 1 | bo7 == 1){ 
+          if(stage2.q[1:0]==2b00){ instr = c{4b0010, player, 10b0000000001};     } // SHL1, +1
+          else if(stage2.q[1:0]==2b01){instr = c{4b0010, player, 10b0000000001};     } // SHL1, +1
+          else if (stage2.q[1:0]==2b10){instr = c{4b0011, player, 10b0000000010};     } // SHR2, -2
+        }
+          
+        
+          else if (bo3 == 1 | bo8 == 1) { 
+          if(stage2.q[1:0]==2b00){ instr = c{4b0011, player, 10b0000000001};  } // SHR1, -1
+          else if(stage2.q[1:0]==2b01){instr = c{4b0001, player, 10b1111100000};     } // lights 5-10
+          else if (stage2.q[1:0]==2b10){ instr = c{4b0010, player, 10b0000000001}; } // SHL1, +1
+        }
+          
+          else if (bo4 == 1 | bo9 == 1) {  
+          if(stage2.q[1:0]==2b00){ instr =c{4b0001, player, 10b1010101010};   } // even
+          else if(stage2.q[1:0]==2b01){instr =c{4b0001, player, 10b1000010000};     } // mul of 5
+          else if (stage2.q[1:0]==2b10){ instr =c{4b0001, player, 10b0000000001}; } // just first light
+        }
+          
+          else if (bo5 == 1 | bo10 ==1) { instr = c{4b0000, player, 10b0000000000};}  //reset code        
+
+                  
+          }
+        
+        
+
         
         //pass instr to ctl/alu --> top file
         //rx code, do the LED lighting, check zap n move on
@@ -217,12 +247,20 @@ module stateMach (
         //else { if (player == 2b10) { play_row_2 = alu_output[9:0];}}
         
        // if (zap == 0) { state.d = state.PRESS_ME;}
-        if (zap) { state.d = state.ZAPPED;
-        if(clear.q){instr = c{4b0000, 001, 10b0000000000};
-        clear.d=0;}
+        if(player==2b01){
+        if(zap1){
+          
+              instr = c{4b0000, player, 10b0000000000};    
+              state.d = state.ZAPPED;
+            }      
+        }
+        else if(player==2b10){
+        if(zap2){
+          
+              instr = c{4b0000, player, 10b0000000000};    
+              state.d = state.ZAPPED2;
             }
-      
-        
+        }
       state.ZAPPED:
         //play_row_1[4] = b1;
         //line++, do lighting of lines (the next row of lights)
@@ -232,40 +270,53 @@ module stateMach (
         //if (line 1 is 0) { light line 1}
         //elif (line 2 is 0) { light line 2}
         //else (ie line 1 and 2 is 1) { light line 0}
-        //player=2b01;
-        clear.d=1;
         player=play.q[1:0];
         playerr=stage1.q;
         
         if (player == 2b01) {  //player 1
           
           if (stage1.q[1:0]== 2b00) { led_counter.d[2:0]= 3b100;
-          stage1.d = stage1.q + 1;}
+          stage1.d = stage1.q + 1;
+            state.d = state.MAP;}
           else if (stage1.q[1:0] == 2b01) { led_counter.d[2:0]= 3b110;
-          stage1.d = stage1.q + 1;}
+          stage1.d = stage1.q + 1;
+            state.d = state.MAP;}
           else if (stage1.q[1:0] == 2b10) { led_counter.d[2:0] = 3b111;
           stage1.d = stage1.q + 1;
-  //          state.d=state.END;
+            state.d=state.END;
          }
+            }           
+                  
 
-           state.d = state.MAP;
-            } 
+              state.ZAPPED2:
+        //play_row_1[4] = b1;
+        //line++, do lighting of lines (the next row of lights)
         
-          else if (player == 2b10) {  //player 2
-          
-          if (stage2.q[1:0]== 2b00) { led_counter.d[2:0]= 3b001;
-          stage2.d = stage2.q + 1;}
-          else if (stage2.q[1:0] == 2b01) { led_counter.d[2:0]= 3b011;
-          stage2.d = stage2.q + 1;}
-          else if (stage2.q[1:0] == 2b10) { led_counter.d[2:0] = 3b111;
+        // grab current light state of player in question
+        
+        //if (line 1 is 0) { light line 1}
+        //elif (line 2 is 0) { light line 2}
+        //else (ie line 1 and 2 is 1) { light line 0}
+        //player=2b01;
+        player=play.q[1:0];
+        
+
+        
+          if (player == 2b10) {  //player 2
+        
+          if (stage2.q[1:0]== 2b00) { led_counter2.d[2:0]= 3b100;
+          stage2.d = stage2.q+1;
+            state.d = state.MAP;}
+          else if (stage2.q[1:0] == 2b01) { led_counter2.d[2:0]= 3b110;
+          stage2.d = stage2.q+1;
+            state.d = state.MAP;
+            }
+          else if (stage2.q[1:0] == 2b10) { led_counter2.d[2:0] = 3b111;
           stage2.d = stage2.q + 1;
-  //          state.d=state.END;
+            state.d = state.END;
          }
 
-           state.d = state.MAP;
             } 
-
-        
         //check line/stage == 3, if true go to END, else go MAP 
         
      
@@ -282,10 +333,15 @@ module stateMach (
           } */
         
       state.END:
+        if (bo5 == 1 | bo10 ==1){
+        state.d = state.START;
+          
+              instr = c{4b0000, 2b10, 10b0000000000}; 
+        }
         //play_row_1[5] = b1;
         //do winning shit, eg flash flash + buzz buzz
         
-        state.d = state.START;  // so can restart without off-ing
+        //state.d = state.START;  // so can restart without off-ing
 
       
     } 
