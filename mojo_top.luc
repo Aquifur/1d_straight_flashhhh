@@ -1,0 +1,144 @@
+module mojo_top (
+    input clk,              // 50MHz clock
+    input rst_n,            // reset button (active low)
+  //  output led [8],         // 8 user controllable LEDs
+    input cclk,             // configuration clock, AVR ready when high
+    output spi_miso,        // AVR SPI MISO
+    input spi_ss,           // AVR SPI Slave Select
+    input spi_mosi,         // AVR SPI MOSI
+    input spi_sck,          // AVR SPI Clock
+    output spi_channel [4], // AVR general purpose pins (used by default to select ADC channel)
+    input avr_tx,           // AVR TX (FPGA RX)
+    output avr_rx,          // AVR RX (FPGA TX)
+    input avr_rx_busy,       // AVR RX buffer full
+    
+   // player 1 btns
+    input btn1,
+    input btn2,
+    input btn3,
+    input btn4,
+    input btn5,  // reset btn
+    
+    //player 2 btns
+    input btn6,
+    input btn7,
+    input btn8,
+    input btn9,
+    input btn10,  // reset btn
+    
+    output play_row_1[10],  // for current row, row 0 (p1)
+    output play_row_2[10],  // for current row, row 0 (p2)
+    
+    output score_rows_1[3],
+    output score_rows_2[3]
+    
+    //output playerr[2]
+    
+
+    
+  ) {
+  
+  sig rst;                  // reset signal
+  sig player[2];
+  sig zap1;
+  sig zap2;
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+    
+
+
+    
+    .rst(rst){
+      stateMach statemachine;
+      dff boardstate_1[10];  // old 10bit state of play row (p1) (register)
+      dff boardstate_2[10];  // old 10bit state of play row (p2) (register)
+    }
+  }
+  
+  alu alu;
+  
+  always {
+  
+  //  led=statemachine.led;
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+ 
+    statemachine.btn1 = ~btn1;
+    statemachine.btn2 = ~btn2;
+    statemachine.btn3 = ~btn3;
+    statemachine.btn4 = ~btn4;
+    statemachine.btn5 = ~btn5;
+    statemachine.btn6 = ~btn6;
+    statemachine.btn7 = ~btn7;
+    statemachine.btn8 = ~btn8;
+    statemachine.btn9 = ~btn9;
+    statemachine.btn10 = ~btn10;
+       
+   
+
+    //led = 8hFF;
+
+        
+    zap1 = b0;
+    zap2=0;
+    alu.alufn = 6b0;
+    play_row_1 = 10b0;
+    play_row_2 = 10b0;
+    
+//    statemachine.btn1 = b1;
+//    statemachine.btn2 = b0;
+//    statemachine.btn3 = b0;
+//    statemachine.btn4 = b0;
+//    statemachine.btn5 = b0;
+//    statemachine.btn6 = b0;
+//    statemachine.btn7 = b0;
+//    statemachine.btn8 = b0;
+//    statemachine.btn9 = b0;
+//    statemachine.btn10 = b0;
+
+    
+  //  statemachine.btn1 = btn1;
+    
+    player = statemachine.instr[11:10];
+    alu.a = 16b0;
+    alu.b = 16b0;
+    if (player == 2b01) { alu.a[9:0] = boardstate_1.q[9:0];}//regp1
+    else { if (player == 2b10) { alu.a[9:0] = boardstate_2.q[9:0];}}//regp2
+    alu.b[9:0] = statemachine.instr[9:0];
+    
+    if (statemachine.instr[13:12] == 2b00) { alu.alufn = 6b011000;}  // reset
+    if (statemachine.instr[13:12] == 2b01) { alu.alufn = 6b010110;}  // XOR
+    if (statemachine.instr[13:12] == 2b10) { alu.alufn = 6b100000;}  // SHLC
+    if (statemachine.instr[13:12] == 2b11) { alu.alufn = 6b100001;}  // SHRC
+    
+    //statemachine.alu_output = alu.alu;
+    if (player == 2b01) { 
+      boardstate_1.d[9:0] = alu.alu[9:0];}
+        
+    else { if (player == 2b10) { 
+      boardstate_2.d[9:0] = alu.alu[9:0];}}
+    
+    zap1 = &boardstate_1.q[9:0];
+    zap2= &boardstate_2.q[9:0]; 
+       
+    statemachine.zap1 = zap1;
+    statemachine.zap2 = zap2;
+        
+    
+    play_row_1 = ~boardstate_1.q[9:0];//reg
+    play_row_2 = ~boardstate_2.q[9:0];
+    
+    
+    score_rows_1 = ~statemachine.score_rows_1;
+    score_rows_2 = ~statemachine.score_rows_2;
+    
+  // playerr=statemachine.playerr;
+  //  led = statemachine.led;             // turn LEDs off
+    spi_miso = bz;          // not using SPI
+    spi_channel = bzzzz;    // not using flags
+    avr_rx = bz ;           // not using serial port
+  }
+}
